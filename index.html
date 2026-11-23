@@ -43,9 +43,9 @@
   </div>
 
   <script>
-    // ================= 請修改這兩行設定 =================
-    const LIFF_ID = "2012759776-EMPr4Tf7"; // 填入你的 LINE LIFF ID
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwBBARgkP1i6_rJT1PmAZtsMELcGIh7b_TjvVJcEgZTqJRYHfs59GXgjDXdnfpJ2xyL/exec"; // 填入你的 GAS 網址
+    // ================= 已填入你的專屬設定 =================
+    const LIFF_ID = "2012759776-EMPr4Tf7";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw_wag7-qiQgD_QDTMEQ0eaZycP3bBxlEUQ1YFNxX5xx0P7nh4Gi30yF5muSmn0oIzp/exec";
     // ====================================================
 
     let lineUserId = "";
@@ -54,7 +54,9 @@
 
     window.onload = async function() {
       const urlParams = new URLSearchParams(window.location.search);
-      autoPunchType = urlParams.get('type');
+      const rawType = (urlParams.get('type') || "").toLowerCase();
+      if (rawType === "in") autoPunchType = "上班";
+      if (rawType === "out") autoPunchType = "下班";
 
       try {
         await liff.init({ liffId: LIFF_ID });
@@ -91,7 +93,16 @@
           });
           document.getElementById('bindSection').style.display = "block";
           document.getElementById('manualBtns').style.display = "flex";
-          updateStatus("loading", "👆 請先在上方選擇你的姓名，再點擊打卡按鈕");
+          
+          if (autoPunchType === "上班") {
+            document.getElementById('btnOut').style.display = "none";
+            document.getElementById('btnIn').innerText = "確認綁定並打上班卡";
+          } else if (autoPunchType === "下班") {
+            document.getElementById('btnIn').style.display = "none";
+            document.getElementById('btnOut').innerText = "確認綁定並打下班卡";
+          }
+          
+          updateStatus("loading", "👆 請先在上方選擇你的姓名，再點擊確認按鈕");
         }
       } catch (err) {
         updateStatus("err", "❌ LIFF 初始化失敗：" + err.message);
