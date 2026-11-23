@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>員工快速打卡</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 90vh; }
+    .card { background: white; width: 100%; max-width: 380px; border-radius: 16px; padding: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); text-align: center; }
+    h2 { margin-top: 0; color: #1a202c; font-size: 22px; }
+    .user-badge { display: inline-block; background: #edf2f7; color: #2d3748; padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: bold; margin-bottom: 16px; }
+    .status-box { padding: 14px; border-radius: 10px; margin: 16px 0; font-size: 15px; font-weight: bold; line-height: 1.5; white-space: pre-line; }
+    .loading { background: #ebf8ff; color: #2b6cb0; }
+    .ok { background: #f0fff4; color: #2f855a; }
+    .err { background: #fff5f5; color: #c53030; }
+    select { width: 100%; padding: 12px; margin-bottom: 16px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 16px; background: white; }
+    .btn-group { display: flex; gap: 12px; margin-top: 10px; }
+    button { flex: 1; padding: 16px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; }
+    .btn-in { background: #3182ce; }
+    .btn-out { background: #38a169; }
+    button:disabled { background: #cbd5e0; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>📍 公司員工打卡</h2>
+    <div id="userBadge" class="user-badge">讀取 LINE 身分中...</div>
+
+    <div id="bindSection" style="display: none;">
+      <p style="font-size: 13px; color: #e53e3e; margin-bottom: 8px;">首次使用，請選擇你的姓名進行永久綁定：</p>
+      <select id="empName">
+        <option value="">-- 請選擇你的姓名 --</option>
+      </select>
+    </div>
+
+    <div id="statusBox" class="status-box loading">📡 正在初始化系統與定位...</div>
+
+    <div class="btn-group" id="manualBtns" style="display: none;">
+      <button id="btnIn" class="btn-in" onclick="executePunch('上班')">上班打卡</button>
+      <button id="btnOut" class="btn-out" onclick="executePunch('下班')">下班打卡</button>
+    </div>
+  </div>
+
+  <script>
+    // ================= 請修改這兩行設定 =================
+    const LIFF_ID = "2012759776-EMPr4Tf7"; // 填入你的 LINE LIFF ID
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwBBARgkP1i6_rJT1PmAZtsMELcGIh7b_TjvVJcEgZTqJRYHfs59GXgjDXdnfpJ2xyL/exec"; // 填入你的 GAS 網址
+    // ====================================================
+
+    let lineUserId = "";
+    let boundEmpName = "";
+    let autoPunchType = null;
+
+    window.onload = async function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      autoPunchType = urlParams.get('type');
+
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+
+        const profile = await liff.getProfile();
+        lineUserId = profile.userId;
+
+        updateStatus("loading", "🔍 正在驗證員工綁定狀態...");
+        const res = await fetch(`${GAS_API_URL}?userId=${encodeURIComponent(lineUserId)}`);
+        const userData = await res.json();
+
+        if (userData.boundName) {
+          boundEmpName = userData.boundName;
+          document.getElementById('userBadge').innerText = `👤 ${boundEmpName}`;
+          
+          if (autoPunchType === "上班" || autoPunchType === "下班") {
+            executePunch(autoPunchType);
+          } else {
+            updateStatus("ok", "✅ 身分驗證通過，請點擊下方按鈕");
+            document.getElementById('manualBtns').style.display = "flex";
+          }
+        } else {
+          document.getElementById('userBadge').innerText = `LINE 暱稱：${profile.displayName} (未綁定)`;
+          const select = document.getElementById('empName');
+          userData.unboundNames.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.innerText = name;
+            select.appendChild(opt);
+          });
+          document.getElementById('bindSection').style.display = "block";
+          document.getElementById('manualBtns').style.display = "flex";
+          updateStatus("loading", "👆 請先在上方選擇你的姓名，再點擊打卡按鈕");
+        }
+      } catch (err) {
+        updateStatus("err", "❌ LIFF 初始化失敗：" + err.message);
+      }
+    };
+
+    function executePunch(punchType) {
+      const selectedName = boundEmpName || document.getElementById('empName').value;
+      if (!selectedName) {
+        alert("請先選擇你的姓名！");
+        return;
+      }
+
+      document.getElementById('manualBtns').style.display = "none";
+      updateStatus("loading", `📡 正在取得 GPS 定位並執行【${punchType}】打卡...`);
+
+      if (!navigator.geolocation) {
+        updateStatus("err", "❌ 你的手機不支援 GPS 定位");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async function(position) {
+          try {
+            const payload = {
+              userId: lineUserId,
+              empName: selectedName,
+              punchType: punchType,
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
+
+            const response = await fetch(GAS_API_URL, {
+              method: "POST",
+              body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+
+            if (result.success) {
+              updateStatus("ok", result.message);
+
+              if (liff.isInClient()) {
+                try {
+                  await liff.sendMessages([{ type: 'text', text: result.message }]);
+                } catch (msgErr) {}
+              }
+
+              setTimeout(() => {
+                if (liff.isInClient()) liff.closeWindow();
+              }, 1500);
+            } else {
+              updateStatus("err", result.message);
+              document.getElementById('manualBtns').style.display = "flex";
+            }
+          } catch (e) {
+            updateStatus("err", "❌ 網路連線異常，請重試：" + e.message);
+            document.getElementById('manualBtns').style.display = "flex";
+          }
+        },
+        function(error) {
+          updateStatus("err", "⚠️ 無法取得 GPS 定位！請確認手機已開啟定位權限。");
+          document.getElementById('manualBtns').style.display = "flex";
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+
+    function updateStatus(type, msg) {
+      const box = document.getElementById('statusBox');
+      box.className = `status-box ${type}`;
+      box.innerText = msg;
+    }
+  </script>
+</body>
+</html>
