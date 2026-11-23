@@ -1,7 +1,7 @@
 // ================= 系統設定區 =================
-const APP_VERSION = "v2.1.0 (2026-11-23)";
+const APP_VERSION = "v2.1.1 (2026-11-23)";
 const LIFF_ID = "2012759776-EMPr4Tf7";
-const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw13mr9J2FrZvPHUV6CGrDHYLiFV2BfT2N8UGzSz_a_dYU4WyAH1ohO8M1ejKCna6uU/exec";
+const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxZQWXJuKsdNbztDLbBvonZZ6UBhZ54J9Hd7uM3-Yl44Kyiw6g3-RD6Mqxo4ybe9r_X/exec";
 // ==============================================
 
 let lineUserId = "";
