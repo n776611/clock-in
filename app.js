@@ -1,5 +1,5 @@
 // ================= 系統設定區 =================
-const APP_VERSION = "v2.0.2 (2026-11-23)";
+const APP_VERSION = "v2.0.3 (2026-11-23)";
 const LIFF_ID = "2012759776-EMPr4Tf7";
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxgRCfCqZZHFZLBxDY2or_xg7d-k08Z9mxYxWsqmm14UBKfcOuRKqsot6J7gBaywWdD/exec";
 // ==============================================
@@ -8,7 +8,6 @@ let lineUserId = "";
 let boundEmpName = "";
 let autoPunchType = null;
 
-// 即時電子時鐘顯示
 function startLiveClock() {
   const clockEl = document.getElementById('liveClock');
   const update = () => {
@@ -23,22 +22,28 @@ window.onload = async function () {
   startLiveClock();
   document.getElementById('versionFooter').innerText = `Version ${APP_VERSION}`;
 
-  // 解析網址參數 (?type=in 或 ?type=out)
   const urlParams = new URLSearchParams(window.location.search);
   const rawType = (urlParams.get('type') || "").toLowerCase();
   if (rawType === "in") autoPunchType = "上班";
   if (rawType === "out") autoPunchType = "下班";
 
+  // 階段一：初始化 LINE LIFF
+  let profile;
   try {
     await liff.init({ liffId: LIFF_ID });
     if (!liff.isLoggedIn()) {
       liff.login();
       return;
     }
-
-    const profile = await liff.getProfile();
+    profile = await liff.getProfile();
     lineUserId = profile.userId;
+  } catch (err) {
+    updateStatus("err", "LINE LIFF 驗證失敗：" + err.message);
+    return;
+  }
 
+  // 階段二：連線 Google Apps Script 查詢綁定狀態
+  try {
     updateStatus("loading", "正在驗證員工綁定狀態...");
     const res = await fetch(`${GAS_API_URL}?userId=${encodeURIComponent(lineUserId)}`);
     const userData = await res.json();
@@ -87,7 +92,7 @@ window.onload = async function () {
       updateStatus("loading", "請先在上方選擇你的姓名，再點擊確認按鈕");
     }
   } catch (err) {
-    updateStatus("err", "LIFF 初始化失敗：" + err.message);
+    updateStatus("err", "後端資料庫連線失敗（請檢查 GAS 部署權限是否為「所有人」）：" + err.message);
   }
 };
 
@@ -136,7 +141,6 @@ function executePunch(punchType) {
         const result = await response.json();
 
         if (result.success) {
-          // 移除後端回傳字串開頭的舊 emoji，改由前端精緻 SVG 圖示呈現
           const cleanMsg = result.message.replace(/^✅\s*/, "");
           updateStatus("ok", cleanMsg);
 
@@ -167,7 +171,6 @@ function executePunch(punchType) {
   );
 }
 
-// 更新狀態卡片樣式與對應圖示
 function updateStatus(type, msg) {
   const box = document.getElementById('statusBox');
   const iconEl = document.getElementById('statusIcon');
