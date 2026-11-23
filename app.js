@@ -1,5 +1,5 @@
 // ================= 系統設定區 =================
-const APP_VERSION = "v2.0.1 (2026-11-23)";
+const APP_VERSION = "v2.0.2 (2026-11-23)";
 const LIFF_ID = "2012759776-EMPr4Tf7";
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxgRCfCqZZHFZLBxDY2or_xg7d-k08Z9mxYxWsqmm14UBKfcOuRKqsot6J7gBaywWdD/exec";
 // ==============================================
