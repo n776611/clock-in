@@ -1,0 +1,44 @@
+/* 狀態卡片基礎與三種情境主題 */
+.status-card {
+  transition: all 0.25s ease;
+  border-width: 1px;
+}
+
+.status-loading {
+  background-color: #eff6ff;
+  border-color: #dbeafe;
+  color: #1e40af;
+}
+
+.status-ok {
+  background-color: #ecfdf5;
+  border-color: #d1fae5;
+  color: #065f46;
+}
+
+.status-err {
+  background-color: #fef2f2;
+  border-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* 手機點擊按鈕的微縮觸覺回饋 */
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* 載入中旋轉動畫 */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(30, 64, 175, 0.2);
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
