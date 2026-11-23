@@ -1,7 +1,7 @@
 // ================= 系統設定區 =================
 const APP_VERSION = "v2.0.4 (2026-11-23)";
 const LIFF_ID = "2012759776-EMPr4Tf7";
-const GAS_API_URL = "https://script.google.com/macros/s/AKfycby1GocKpgCgN0GB5acEoGmJm_qLdilyy1hwtsrqVedSFTvpOhSXPuwN0NEXhyDUs2M/exec";
+const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxgRCfCqZZHFZLBxDY2or_xg7d-k08Z9mxYxWsqmm14UBKfcOuRKqsot6J7gBaywWdD/exec";
 // ==============================================
 
 let lineUserId = "";
@@ -45,9 +45,18 @@ window.onload = async function () {
   // 階段二：連線 Google Apps Script 查詢綁定狀態
   try {
     updateStatus("loading", "正在驗證員工綁定狀態...");
-    const res = await fetch(`${GAS_API_URL}?userId=${encodeURIComponent(lineUserId)}`);
-    const userData = await res.json();
+    // 加上時間戳避免 iOS 快取 GET 請求，並明確指定 follow 重導向
+    const queryUrl = `${GAS_API_URL}?userId=${encodeURIComponent(lineUserId)}&_t=${Date.now()}`;
+    const res = await fetch(queryUrl, {
+      method: "GET",
+      redirect: "follow"
+    });
 
+    if (!res.ok) {
+      throw new Error(`HTTP 狀態碼 ${res.status}`);
+    }
+
+    const userData = await res.json();
     const badgeEl = document.getElementById('userBadge');
 
     if (userData.boundName) {
@@ -92,7 +101,7 @@ window.onload = async function () {
       updateStatus("loading", "請先在上方選擇你的姓名，再點擊確認按鈕");
     }
   } catch (err) {
-    updateStatus("err", "後端資料庫連線失敗（請檢查 GAS 部署權限是否為「所有人」）：" + err.message);
+    updateStatus("err", "後端資料庫連線失敗：" + err.message);
   }
 };
 
@@ -134,8 +143,13 @@ function executePunch(punchType) {
           lng: position.coords.longitude
         };
 
+        // 使用 text/plain 避開 iOS Safari CORS Preflight 預檢阻擋
         const response = await fetch(GAS_API_URL, {
           method: "POST",
+          redirect: "follow",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
           body: JSON.stringify(payload)
         });
         const result = await response.json();
